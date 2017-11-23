@@ -13,23 +13,26 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: maxMessageSize,
 }
 
-type BroadcastWriter chan []byte
+type RequestEvent struct {
+	Data   []byte
+	Client *Client
+}
 
 type Server struct {
-	Broadcast  BroadcastWriter
+	Broadcast  chan []byte
+	Event      chan RequestEvent
 	register   chan *Client
 	unregister chan *Client
 	clients    map[*Client]bool
-	handler    func([]byte, *Client) error
 }
 
-func NewServer(handler func([]byte, *Client) error) *Server {
+func NewServer() *Server {
 	newServer := &Server{
+		Broadcast:  make(chan []byte),
+		Event:      make(chan RequestEvent),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		Broadcast:  make(chan []byte),
 		clients:    make(map[*Client]bool),
-		handler:    handler,
 	}
 	return newServer
 }

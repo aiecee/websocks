@@ -14,12 +14,10 @@ const (
 	maxMessageSize = 1024 * 1024
 )
 
-type SocketWriter chan []byte
-
 type Client struct {
 	server    *Server
 	webSocket *websocket.Conn
-	Send      SocketWriter
+	Send      chan []byte
 }
 
 func (c *Client) read() {
@@ -39,9 +37,9 @@ func (c *Client) read() {
 			log.Println(err)
 			break
 		}
-		if err = c.server.handler(message, c); err != nil {
-			log.Println(err)
-			break
+		c.server.Event <- RequestEvent{
+			Data:   message,
+			Client: c,
 		}
 	}
 }
