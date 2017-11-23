@@ -1,7 +1,6 @@
 package socks
 
 import (
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -33,13 +32,10 @@ func (c *Client) read() {
 
 	for {
 		_, message, err := c.webSocket.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			break
-		}
 		c.server.Event <- RequestEvent{
 			Data:   message,
 			Client: c,
+			Error:  err,
 		}
 	}
 }

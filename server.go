@@ -16,6 +16,7 @@ var upgrader = websocket.Upgrader{
 type RequestEvent struct {
 	Data   []byte
 	Client *Client
+	Error  error
 }
 
 type Server struct {
