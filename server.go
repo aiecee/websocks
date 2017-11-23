@@ -23,6 +23,7 @@ type Server struct {
 	Event      chan RequestEvent
 	register   chan *Client
 	unregister chan *Client
+	done       chan struct{}
 	clients    map[*Client]bool
 }
 
@@ -32,6 +33,7 @@ func NewServer() *Server {
 		Event:      make(chan RequestEvent),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		done:       make(chan struct{}),
 		clients:    make(map[*Client]bool),
 	}
 	return newServer
@@ -59,6 +61,7 @@ func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) Run() {
 	go func() {
+	loop:
 		for {
 			select {
 			case client := <-s.register:
@@ -67,14 +70,21 @@ func (s *Server) Run() {
 				if !s.clients[client] {
 					continue
 				}
-				delete(s.clients, client)
-				client.webSocket.Close()
-				close(client.Send)
+				s.closeClient(client)
 			case message := <-s.Broadcast:
 				s.broadcast(message)
+			case <-s.done:
+				for client := range s.clients {
+					s.closeClient(client)
+				}
+				break loop
 			}
 		}
 	}()
+}
+
+func (s *Server) Close() {
+	s.done <- struct{}{}
 }
 
 func (s *Server) broadcast(bytes []byte) {
@@ -86,4 +96,10 @@ func (s *Server) broadcast(bytes []byte) {
 			s.unregister <- c
 		}
 	}
+}
+
+func (s *Server) closeClient(client *Client) {
+	delete(s.clients, client)
+	client.webSocket.Close()
+	close(client.Send)
 }
