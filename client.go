@@ -31,7 +31,10 @@ func (c *Client) read() {
 	})
 
 	for {
-		_, message, err := c.webSocket.ReadMessage()
+		mt, message, err := c.webSocket.ReadMessage()
+		if mt == -1 {
+			return
+		}
 		c.server.Event <- RequestEvent{
 			Data:   message,
 			Client: c,
@@ -52,17 +55,21 @@ func (c *Client) write() {
 		select {
 		case bytes, ok := <-c.Send:
 			if !ok {
-				c.webSocket.WriteMessage(websocket.CloseMessage, []byte{})
+				c.send(websocket.CloseMessage, []byte{})
 				return
 			}
-			if err := c.webSocket.WriteMessage(websocket.TextMessage, bytes); err != nil {
+			if err := c.send(websocket.TextMessage, bytes); err != nil {
 				return
 			}
 		case <-pingTicker.C:
-			c.webSocket.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.webSocket.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+			if err := c.send(websocket.PingMessage, []byte{}); err != nil {
 				return
 			}
 		}
 	}
+}
+
+func (c *Client) send(messageType int, bytes []byte) error {
+	c.webSocket.SetWriteDeadline(time.Now().Add(writeWait))
+	return c.webSocket.WriteMessage(messageType, bytes)
 }
